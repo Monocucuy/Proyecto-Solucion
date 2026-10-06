@@ -1,0 +1,42 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ccr-865225cd-h4ytep, main]
+    paths: ['app/**', 'build.gradle.kts', 'settings.gradle.kts', 'gradle/**', '.github/workflows/android-apk.yml']
+
+permissions:
+  contents: write   # para publicar el APK como Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compilar APK debug
+        run: chmod +x gradlew && ./gradlew --no-daemon :app:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solucion-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      # Release para bajar el APK directo desde el navegador del celular (el artifact exige zip + login).
+      - name: Publicar Release con el APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk solucion-debug.apk
+          gh release delete apk-debug --cleanup-tag --yes || true
+          gh release create apk-debug solucion-debug.apk --prerelease \
+            --target "${{ github.sha }}" \
+            --title "APK debug (${GITHUB_SHA::7})" \
+            --notes "Build debug firmado con la clave de depuración. Solo para pruebas. Commit ${GITHUB_SHA}."
+
+      - name: Tests unitarios
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
