@@ -46,8 +46,13 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
             }
         }
         if (showSettings) SettingsDialog(
-            current = vm.apiKey,
-            onSave = { vm.apiKey = it; showSettings = false },
+            currentKey = vm.apiKey,
+            currentUrl = vm.backendUrl,
+            currentToken = vm.backendToken,
+            onSave = { key, url, token ->
+                vm.apiKey = key; vm.backendUrl = url; vm.backendToken = token
+                showSettings = false
+            },
             onDismiss = { showSettings = false }
         )
     }
@@ -139,19 +144,32 @@ private fun Failed(msg: String, onRetry: () -> Unit) = Column(
 }
 
 @Composable
-private fun SettingsDialog(current: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
-    var key by remember { mutableStateOf(current) }
+private fun SettingsDialog(
+    currentKey: String, currentUrl: String, currentToken: String,
+    onSave: (key: String, url: String, token: String) -> Unit, onDismiss: () -> Unit
+) {
+    var key by remember { mutableStateOf(currentKey) }
+    var url by remember { mutableStateOf(currentUrl) }
+    var token by remember { mutableStateOf(currentToken) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Clave de VirusTotal") },
+        title = { Text("Reputación de apps") },
         text = {
             Column {
-                Text("Pega tu clave gratuita de virustotal.com. Se guarda cifrada en este dispositivo.", fontSize = 13.sp)
+                Text("Servidor propio (recomendado). Si lo dejas vacío, se consulta VirusTotal directo con tu clave. " +
+                    "Solo se envían hashes. Todo se guarda cifrado en este dispositivo.", fontSize = 13.sp)
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(value = key, onValueChange = { key = it }, singleLine = true, label = { Text("API key") })
+                OutlinedTextField(value = url, onValueChange = { url = it }, singleLine = true,
+                    label = { Text("URL del servidor") })
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(value = token, onValueChange = { token = it }, singleLine = true,
+                    label = { Text("Token del servidor") })
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(value = key, onValueChange = { key = it }, singleLine = true,
+                    label = { Text("Clave de VirusTotal (modo directo)") })
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(key) }) { Text("Guardar") } },
+        confirmButton = { TextButton(onClick = { onSave(key, url, token) }) { Text("Guardar") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }

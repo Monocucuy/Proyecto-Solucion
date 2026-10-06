@@ -7,6 +7,8 @@ export function loadConfig(env = process.env) {
     appTokens: (env.APP_TOKENS || '').split(',').map((s) => s.trim()).filter(Boolean),
     trustProxy: env.TRUST_PROXY === '1',
     vtKey: env.VT_API_KEY || '',
+    vtBaseUrl: env.VT_BASE_URL || undefined, // solo para pruebas/staging
+    mdBaseUrl: env.MD_BASE_URL || undefined,
     mdKey: env.MD_API_KEY || '',
     ttlMs: int(env.CACHE_TTL_DAYS, 7) * 24 * 60 * 60 * 1000,
     failTtlMs: int(env.FAIL_TTL_MINUTES, 10) * 60 * 1000,

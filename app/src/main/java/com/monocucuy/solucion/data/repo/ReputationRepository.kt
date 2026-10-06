@@ -60,7 +60,7 @@ class ReputationRepository(
         if (wait > 0) delay(wait)
         lastCall = System.currentTimeMillis()
     }
-
-    private fun HashCacheEntity.toRep() =
-        if (!found) Rep(Verdict.UNKNOWN) else Rep(verdictOf(malicious, suspicious), malicious, suspicious)
 }
+
+fun HashCacheEntity.toRep() =
+    if (!found) Rep(Verdict.UNKNOWN) else Rep(verdictOf(malicious, suspicious), malicious, suspicious)

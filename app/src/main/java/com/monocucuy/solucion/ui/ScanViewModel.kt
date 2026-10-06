@@ -28,6 +28,14 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
         get() = c.settings.vtKey
         set(v) { c.settings.vtKey = v }
 
+    var backendUrl: String
+        get() = c.settings.backendUrl
+        set(v) { c.settings.backendUrl = v }
+
+    var backendToken: String
+        get() = c.settings.backendToken
+        set(v) { c.settings.backendToken = v }
+
     fun startScan() {
         if (job?.isActive == true) return
         job = viewModelScope.launch {
@@ -40,7 +48,7 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
                 _state.value = UiState.Scanning("Sistema", 0, 0, "")
                 all += c.system.check()
 
-                val res = c.appScanner.scan(apiKey.ifBlank { null }) { cur, tot, label ->
+                val res = c.appScanner.scan(c.reputationSource()) { cur, tot, label ->
                     _state.value = UiState.Scanning("Apps", cur, tot, label)
                 }
                 all += res.findings

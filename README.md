@@ -8,7 +8,9 @@ App Android (Kotlin + Jetpack Compose) que revisa el celular y entrega un puntaj
 
 Documento de producto: [`docs/MVP.md`](docs/MVP.md)
 
-Backend opcional de reputación (cache compartido + cola con límite de tasa): [`backend/`](backend/README.md)
+Backend opcional de reputación (cache compartido + cola con límite de tasa): [`backend/`](backend/README.md).
+En **Ajustes** puedes poner su URL y token; sin URL la app consulta VirusTotal directo con tu clave.
+Pendiente de verificar con claves reales y en Android Studio: [`docs/HANDOFF-LOCAL.md`](docs/HANDOFF-LOCAL.md)
 
 ## Cómo correrlo
 

@@ -7,8 +7,8 @@ import { createApp } from './server.js';
 
 const config = loadConfig();
 const providers = [
-  virusTotal({ apiKey: config.vtKey, minGapMs: config.vtMinGapMs }),
-  metaDefender({ apiKey: config.mdKey, minGapMs: config.mdMinGapMs }),
+  virusTotal({ apiKey: config.vtKey, baseUrl: config.vtBaseUrl, minGapMs: config.vtMinGapMs }),
+  metaDefender({ apiKey: config.mdKey, baseUrl: config.mdBaseUrl, minGapMs: config.mdMinGapMs }),
 ];
 if (!providers.some((p) => p.configured)) {
   console.warn('[aviso] Sin VT_API_KEY ni MD_API_KEY: todo hash nuevo se respondera "unavailable".');

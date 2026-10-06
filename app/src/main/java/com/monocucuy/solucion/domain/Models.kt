@@ -34,7 +34,11 @@ data class Rep(
     val verdict: Verdict,
     val malicious: Int = 0,
     val suspicious: Int = 0,
-    /** "key" = clave inválida, "limit" = límite de tasa, "net" = sin red */
+    /**
+     * "key" = clave de VirusTotal inválida, "token" = el servidor propio rechazó el token,
+     * "limit" = límite de tasa, "net" = sin red, "pending" = el servidor aún no terminó de consultar,
+     * "unavailable" = el servidor no pudo resolverlo (proveedores caídos / cola llena).
+     */
     val error: String? = null
 )
 

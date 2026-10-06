@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Solo HTTPS, salvo el emulador de Android Studio, que ve el localhost de tu PC en 10.0.2.2
+  (para probar el backend con `npm start`). En un celular real usa HTTPS o agrega aquí la IP de tu red.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

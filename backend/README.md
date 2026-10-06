@@ -20,6 +20,7 @@ npm test
 ```
 
 Variables: ver `.env.example` y `src/config.js` (`CACHE_TTL_DAYS`, `MAX_BATCH`, `REQ_PER_MIN`, `VT_MIN_GAP_MS`, …).
+`VT_BASE_URL` / `MD_BASE_URL` redirigen a los proveedores (pruebas con servidores falsos, staging).
 
 ## API
 
