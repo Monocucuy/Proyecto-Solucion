@@ -8,6 +8,8 @@ App Android (Kotlin + Jetpack Compose) que revisa el celular y entrega un puntaj
 
 Documento de producto: [`docs/MVP.md`](docs/MVP.md)
 
+Backend opcional de reputación (cache compartido + cola con límite de tasa): [`backend/`](backend/README.md)
+
 ## Cómo correrlo
 
 1. Abre la carpeta en **Android Studio** (Ladybug o más nuevo, JDK 17). Deja que sincronice Gradle.
