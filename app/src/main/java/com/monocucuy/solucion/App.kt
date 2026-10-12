@@ -14,6 +14,7 @@ import com.monocucuy.solucion.data.repo.ReputationSource
 import com.monocucuy.solucion.debug.DebugLog
 import com.monocucuy.solucion.scan.AppScanner
 import com.monocucuy.solucion.scan.HardwareChecker
+import com.monocucuy.solucion.scan.HardwareTests
 import com.monocucuy.solucion.scan.SystemChecker
 import com.monocucuy.solucion.ui.SettingsStore
 import kotlinx.serialization.json.Json
@@ -85,5 +86,6 @@ class AppContainer(ctx: Context) {
 
     val appScanner = AppScanner(ctx)
     val hardware = HardwareChecker(ctx)
+    val hardwareTests = HardwareTests(ctx)
     val system = SystemChecker(ctx)
 }

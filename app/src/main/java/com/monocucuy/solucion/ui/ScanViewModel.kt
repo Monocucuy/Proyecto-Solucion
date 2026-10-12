@@ -69,6 +69,10 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
                 all += c.hardware.check()
                 stageDone("Hardware")
 
+                _state.value = UiState.Scanning("Pruebas de hardware", 0, 0, "")
+                all += c.hardwareTests.run()
+                stageDone("Pruebas de hardware")
+
                 _state.value = UiState.Scanning("Sistema", 0, 0, "")
                 all += c.system.check()
                 stageDone("Sistema")
