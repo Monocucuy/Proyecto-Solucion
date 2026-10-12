@@ -10,16 +10,19 @@ import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.nfc.NfcAdapter
-import android.os.VibrationEffect
-import android.os.Vibrator
 import com.monocucuy.solucion.domain.Category
 import com.monocucuy.solucion.domain.Finding
 import com.monocucuy.solucion.domain.Severity
 import kotlinx.coroutines.delay
 
+/** Cada prueba automática dura 3 s. */
+private const val SENSOR_WINDOW_MS = 3_000L
+private const val TORCH_WINDOW_MS = 3_000L
+
 /**
- * Pruebas activas con APIs públicas y sin root: sensores que responden, linterna, vibrador y componentes.
- * No incluye pruebas que requieren que el usuario toque o escuche (pantalla, altavoz, micrófono).
+ * Pruebas automáticas con APIs públicas y sin root: sensores, cámaras, linterna y componentes.
+ * Lo que requiere que el usuario toque, mire o sienta (pantalla, táctil, altavoz, micrófono, cámara, vibración)
+ * va en Pruebas manuales.
  */
 class HardwareTests(private val ctx: Context) {
     private val hw = Category.HARDWARE
@@ -37,13 +40,13 @@ class HardwareTests(private val ctx: Context) {
             override fun onAccuracyChanged(s: Sensor?, accuracy: Int) = Unit
         }
         continuous.forEach { s -> runCatching { sm.registerListener(listener, s, SensorManager.SENSOR_DELAY_NORMAL) } }
-        delay(2_000)
+        delay(SENSOR_WINDOW_MS)
         sm.unregisterListener(listener)
 
         val silent = continuous.filter { key(it) !in responded }
         val out = mutableListOf<Finding>()
         out += Finding(hw, Severity.INFO, "Sensores",
-            "${continuous.size - silent.size} de ${continuous.size} responden en 2 s · " +
+            "${continuous.size - silent.size} de ${continuous.size} responden en 3 s · " +
                 "${all.size - continuous.size} solo reportan cambios (no se prueban).")
         if (silent.isNotEmpty()) {
             out += Finding(hw, Severity.MEDIUM, "${silent.size} sensor(es) sin respuesta",
@@ -53,7 +56,7 @@ class HardwareTests(private val ctx: Context) {
         return out
     }
 
-    /** Linterna y vibrador: se activan brevemente para comprobar que responden. */
+    /** Cámaras y linterna. El vibrador no está aquí: su prueba es sentirla, así que va en Pruebas manuales. */
     private suspend fun actuators(): List<Finding> {
         val out = mutableListOf<Finding>()
         val cm = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -76,7 +79,7 @@ class HardwareTests(private val ctx: Context) {
             // La linterna no necesita permiso de cámara.
             val ok = try {
                 cm.setTorchMode(flashId, true)
-                delay(400)
+                delay(TORCH_WINDOW_MS)
                 cm.setTorchMode(flashId, false)
                 true
             } catch (e: CameraAccessException) {
@@ -85,21 +88,13 @@ class HardwareTests(private val ctx: Context) {
                 false
             }
             out += if (ok) {
-                Finding(hw, Severity.INFO, "Linterna", "Enciende y apaga correctamente.")
+                Finding(hw, Severity.INFO, "Linterna", "Enciende y apaga correctamente (3 s encendida).")
             } else {
                 Finding(hw, Severity.MEDIUM, "Linterna no responde", "No se pudo activar el flash.",
                     "Puede estar en uso por otra app; cierra la cámara y reintenta.")
             }
         }
 
-        val vib = ctx.getSystemService(Vibrator::class.java)
-        if (vib == null || !vib.hasVibrator()) {
-            out += Finding(hw, Severity.LOW, "Sin vibrador", "El sistema no reporta motor de vibración.")
-        } else {
-            vib.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
-            delay(300)
-            out += Finding(hw, Severity.INFO, "Vibración", "Motor presente; se activó 0,2 s.")
-        }
         return out
     }
 

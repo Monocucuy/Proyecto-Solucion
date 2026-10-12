@@ -10,6 +10,8 @@ import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.ToneGenerator
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.awaitPointerEventScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -44,7 +47,7 @@ import kotlin.math.max
 
 /** Pruebas que necesitan que el usuario mire, toque o escuche. Sus resultados entran al próximo escaneo. */
 enum class ManualTest(val title: String) {
-    SCREEN("Pantalla"), TOUCH("Táctil"), SPEAKER("Altavoz"), MIC("Micrófono"), CAMERA("Cámara")
+    SCREEN("Pantalla"), TOUCH("Táctil"), SPEAKER("Altavoz"), VIBRATION("Vibración"), MIC("Micrófono"), CAMERA("Cámara")
 }
 
 @Composable
@@ -73,6 +76,7 @@ fun ManualTestHost(test: ManualTest, onDone: (Finding?) -> Unit) = when (test) {
     ManualTest.SCREEN -> ScreenTest(onDone)
     ManualTest.TOUCH -> TouchTest(onDone)
     ManualTest.SPEAKER -> SpeakerTest(onDone)
+    ManualTest.VIBRATION -> VibrationTest(onDone)
     ManualTest.MIC -> MicTest(onDone)
     ManualTest.CAMERA -> CameraTest(onDone)
 }
@@ -81,9 +85,16 @@ fun ManualTestHost(test: ManualTest, onDone: (Finding?) -> Unit) = when (test) {
 private fun ScreenTest(onDone: (Finding?) -> Unit) {
     val colors = listOf(Color.Black, Color.White, Color.Red, Color.Green, Color.Blue)
     var i by remember { mutableIntStateOf(0) }
+    // Cada color dura 3 s; tocar la pantalla lo salta.
+    LaunchedEffect(i) {
+        if (i < colors.size) {
+            delay(SCREEN_STEP_MS)
+            i++
+        }
+    }
     if (i < colors.size) {
         Box(Modifier.fillMaxSize().background(colors[i]).clickable { i++ }, contentAlignment = Alignment.Center) {
-            Text("Toca para seguir (${i + 1}/${colors.size})",
+            Text("Color ${i + 1} de ${colors.size} · toca para saltar",
                 color = if (colors[i] == Color.Black) Color.White else Color.Black)
         }
     } else {
@@ -193,6 +204,55 @@ private fun SpeakerTest(onDone: (Finding?) -> Unit) {
     }
 }
 
+/** Vibra 3 s y pregunta si se sintió: el motor puede existir y estar apagado en Ajustes. */
+@Composable
+private fun VibrationTest(onDone: (Finding?) -> Unit) {
+    val ctx = LocalContext.current
+    var vibrating by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var hasMotor by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        val vib = ctx.getSystemService(Vibrator::class.java)
+        if (vib == null || !vib.hasVibrator()) {
+            hasMotor = false
+        } else {
+            vibrating = true
+            vib.vibrate(VibrationEffect.createOneShot(VIBRATION_MS, VibrationEffect.DEFAULT_AMPLITUDE))
+            delay(VIBRATION_MS)
+            vibrating = false
+        }
+        done = true
+    }
+    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        when {
+            vibrating -> Text("Vibrando 3 s…")
+            !done -> Text("Preparando vibración…")
+            !hasMotor -> {
+                Text("El sistema no reporta motor de vibración.")
+                Spacer(Modifier.height(16.dp))
+                OutlinedButton(onClick = {
+                    onDone(Finding(Category.HARDWARE, Severity.LOW, "Sin vibrador",
+                        "El sistema no reporta motor de vibración."))
+                }) { Text("Guardar") }
+            }
+            else -> {
+                Text("¿La sentiste vibrar?", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = {
+                    onDone(Finding(Category.HARDWARE, Severity.INFO, "Vibración: percibida", "Confirmado por el usuario."))
+                }) { Text("Sí") }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = {
+                    onDone(Finding(Category.HARDWARE, Severity.MEDIUM, "Vibración: no percibida",
+                        "El usuario no sintió la vibración.",
+                        "Revisa que la vibración esté activa en Ajustes > Sonido y vibración."))
+                }) { Text("No") }
+            }
+        }
+    }
+}
+
 private enum class MicPhase { IDLE, RECORDING, DENIED, DONE }
 
 @Composable
@@ -212,7 +272,10 @@ private fun MicTest(onDone: (Finding?) -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally) {
         when (phase) {
             MicPhase.IDLE -> {
-                Text("Al empezar, habla durante 3 segundos.")
+                Text("Esta prueba necesita el micrófono. Al tocar Empezar, Android pedirá permiso.",
+                    fontSize = 14.sp)
+                Spacer(Modifier.height(8.dp))
+                Text("Luego habla durante 3 segundos. No se guarda audio.", fontSize = 14.sp)
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = { launcher.launch(Manifest.permission.RECORD_AUDIO) }) { Text("Empezar") }
             }
@@ -273,50 +336,79 @@ private suspend fun recordPeak(): Int = withContext(Dispatchers.IO) {
 }
 
 private const val MIC_THRESHOLD = 1_500 // ~4,5 % de escala: por debajo es ruido de fondo
+private const val SCREEN_STEP_MS = 3_000L
+private const val VIBRATION_MS = 3_000L
 
+/** Toma una foto con la cámara trasera y otra con la frontal; el usuario valida cada una. */
 @Composable
 private fun CameraTest(onDone: (Finding?) -> Unit) {
+    val names = listOf("trasera", "frontal")
+    var step by remember { mutableIntStateOf(0) }
+    val oks = remember { mutableStateListOf<Boolean>() }
     var photo by remember { mutableStateOf<Bitmap?>(null) }
     var failed by remember { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         photo = res.data?.extras?.get("data") as? Bitmap
         failed = photo == null
     }
-    LaunchedEffect(Unit) {
+    fun capture() {
+        photo = null
+        failed = false
+        // Extras de la app de cámara para elegir lente: 0 = trasera, 1 = frontal.
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            .putExtra("android.intent.extras.CAMERA_FACING", if (step == 0) 0 else 1)
+            .putExtra("android.intent.extras.USE_FRONT_CAMERA", step == 1)
         try {
-            launcher.launch(Intent(MediaStore.ACTION_IMAGE_CAPTURE))
+            launcher.launch(intent)
         } catch (e: ActivityNotFoundException) {
             failed = true
         }
     }
+    LaunchedEffect(step) { if (step < names.size) capture() }
+
+    fun answer(ok: Boolean) {
+        oks += ok
+        step++
+        if (step == names.size) {
+            val bad = names.indices.filter { !oks[it] }.map { names[it] }
+            onDone(if (bad.isEmpty()) {
+                Finding(Category.HARDWARE, Severity.INFO, "Cámaras: capturas correctas",
+                    "Trasera y frontal confirmadas por el usuario.")
+            } else {
+                Finding(Category.HARDWARE, Severity.MEDIUM, "Cámara ${bad.joinToString(" y ")}: foto con fallas",
+                    "El usuario reportó fotos malas.", "Revisa lente, enfoque o suciedad.")
+            })
+        }
+    }
+
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
         val bmp = photo
+        val lens = names.getOrElse(step) { "" }
         when {
             bmp != null -> {
+                Text("Cámara $lens", fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(8.dp))
                 Image(bitmap = bmp.asImageBitmap(), contentDescription = null,
                     modifier = Modifier.fillMaxWidth().height(240.dp))
                 Spacer(Modifier.height(12.dp))
                 Text("¿La foto se ve bien?", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = {
-                    onDone(Finding(Category.HARDWARE, Severity.INFO, "Cámara: captura correcta", "Confirmado por el usuario."))
-                }) { Text("Sí") }
+                Button(onClick = { answer(true) }) { Text("Sí") }
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = {
-                    onDone(Finding(Category.HARDWARE, Severity.MEDIUM, "Cámara: foto con fallas",
-                        "El usuario reportó una foto mala.", "Revisa lente, enfoque o suciedad."))
-                }) { Text("No") }
+                OutlinedButton(onClick = { answer(false) }) { Text("No") }
             }
             failed -> {
-                Text("No se tomó foto o no hay app de cámara.")
+                Text("No se tomó foto con la cámara $lens, o no hay app de cámara.")
                 Spacer(Modifier.height(16.dp))
+                Button(onClick = { capture() }) { Text("Reintentar") }
+                Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = {
-                    onDone(Finding(Category.HARDWARE, Severity.INFO, "Cámara: prueba no realizada",
-                        "Sin foto ni app de cámara disponible."))
-                }) { Text("Cerrar") }
+                    onDone(Finding(Category.HARDWARE, Severity.INFO, "Cámaras: prueba incompleta",
+                        "Sin foto de la cámara $lens."))
+                }) { Text("Saltar prueba") }
             }
-            else -> Text("Abriendo la cámara…")
+            else -> Text("Abriendo la cámara $lens…")
         }
     }
 }
