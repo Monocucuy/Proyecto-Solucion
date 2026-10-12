@@ -2,6 +2,7 @@ package com.monocucuy.solucion.ui
 
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,8 +31,18 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
     var showSettings by remember { mutableStateOf(false) }
 
     val ctx = LocalContext.current
+    var manualOpen by remember { mutableStateOf(false) }
+    var running by remember { mutableStateOf<ManualTest?>(null) }
+    BackHandler(enabled = manualOpen || running != null) {
+        if (running != null) running = null else manualOpen = false
+    }
     MaterialTheme {
-        Scaffold(
+        val current = running
+        if (current != null) {
+            ManualTestHost(current) { result -> vm.saveManual(current, result); running = null }
+        } else if (manualOpen) {
+            ManualTestsList(vm.manual, onRun = { running = it }, onBack = { manualOpen = false })
+        } else Scaffold(
             topBar = {
                 TopAppBar(
                     title = { Text("Solución Scanner") },
@@ -43,6 +54,7 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
                 when (val s = state) {
                     UiState.Idle -> Home(
                         onScan = vm::startScan,
+                        onManual = { manualOpen = true },
                         onShareLog = { shareText(ctx, vm.debugText(), "Log de depuración") }
                     )
                     is UiState.Scanning -> Progress(s, onCancel = vm::cancel)
@@ -65,7 +77,7 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
 }
 
 @Composable
-private fun Home(onScan: () -> Unit, onShareLog: () -> Unit) = Column(
+private fun Home(onScan: () -> Unit, onManual: () -> Unit, onShareLog: () -> Unit) = Column(
     Modifier.fillMaxSize().padding(24.dp),
     verticalArrangement = Arrangement.Center,
     horizontalAlignment = Alignment.CenterHorizontally
@@ -75,6 +87,8 @@ private fun Home(onScan: () -> Unit, onShareLog: () -> Unit) = Column(
     Text("Revisamos apps, hardware y configuración del sistema.")
     Spacer(Modifier.height(32.dp))
     Button(onClick = onScan, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Escanear") }
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(onClick = onManual, modifier = Modifier.fillMaxWidth()) { Text("Pruebas manuales") }
     Spacer(Modifier.height(8.dp))
     TextButton(onClick = onShareLog) { Text("Compartir log de depuración") }
 }

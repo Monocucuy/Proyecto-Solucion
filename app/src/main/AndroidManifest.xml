@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Prueba del vibrador (no pide confirmación al usuario). -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Solo para la prueba manual de micrófono; se pide al usuario al tocar "Empezar". -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Necesario para listar apps instaladas. Google Play lo restringe: ver docs/MVP.md -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"

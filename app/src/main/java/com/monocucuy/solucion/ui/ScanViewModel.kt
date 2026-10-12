@@ -2,6 +2,7 @@ package com.monocucuy.solucion.ui
 
 import android.app.Application
 import android.os.Build
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.monocucuy.solucion.App
@@ -30,6 +31,13 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
     // Hallazgos sin filtrar del último escaneo; el reporte se arma desde aquí para poder ocultar confiables.
     private var lastFindings: List<Finding> = emptyList()
     private var lastApps = 0
+
+    /** Resultados de las pruebas manuales; se incluyen en el próximo escaneo. Viven mientras la app no se cierre. */
+    val manual = mutableStateMapOf<ManualTest, Finding>()
+
+    fun saveManual(test: ManualTest, result: Finding?) {
+        if (result == null) manual.remove(test) else manual[test] = result
+    }
 
     var apiKey: String
         get() = c.settings.vtKey
@@ -82,6 +90,7 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 stageDone("Apps (${res.scanned} revisadas)")
                 all += res.findings
+                all += manual.values
 
                 lastFindings = all
                 lastApps = res.scanned
