@@ -11,6 +11,7 @@ import com.monocucuy.solucion.data.repo.BackendSource
 import com.monocucuy.solucion.data.repo.DirectSource
 import com.monocucuy.solucion.data.repo.ReputationRepository
 import com.monocucuy.solucion.data.repo.ReputationSource
+import com.monocucuy.solucion.debug.DebugLog
 import com.monocucuy.solucion.scan.AppScanner
 import com.monocucuy.solucion.scan.HardwareChecker
 import com.monocucuy.solucion.scan.SystemChecker
@@ -27,12 +28,19 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // Los crashes también quedan en el log de depuración antes de que la app se cierre.
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, e ->
+            container.debug.log("CRASH en hilo ${thread.name}", e)
+            previous?.uncaughtException(thread, e)
+        }
     }
 }
 
 /** DI manual: suficiente para el MVP, sin Hilt. */
 class AppContainer(ctx: Context) {
     val settings = SettingsStore(ctx)
+    val debug = DebugLog(ctx)
 
     private val db = Room.databaseBuilder(ctx, AppDb::class.java, "solucion.db").build()
     private val json = Json { ignoreUnknownKeys = true }

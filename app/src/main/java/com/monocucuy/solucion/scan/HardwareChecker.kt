@@ -29,8 +29,11 @@ class HardwareChecker(private val ctx: Context) {
             when (health) {
                 BatteryManager.BATTERY_HEALTH_OVERHEAT -> out += Finding(hw, Severity.HIGH, "Batería sobrecalentada",
                     "El sistema reporta sobrecalentamiento (${temp}°C).", "Desconecta el cargador y deja enfriar.")
-                BatteryManager.BATTERY_HEALTH_DEAD, BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE ->
-                    out += Finding(hw, Severity.HIGH, "Falla de batería", "Estado de salud reportado: falla.", "Llévala a revisión.")
+                BatteryManager.BATTERY_HEALTH_DEAD ->
+                    out += Finding(hw, Severity.HIGH, "Falla de batería", "Estado de salud reportado: muerta.", "Llévala a revisión.")
+                // Muchos equipos reportan este valor sin falla real: solo informativo.
+                BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE ->
+                    out += Finding(hw, Severity.INFO, "Salud de batería", "El sistema reporta un fallo no especificado; no es concluyente.")
                 BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> out += Finding(hw, Severity.MEDIUM, "Sobrevoltaje en batería",
                     "El sistema reporta sobrevoltaje.", "Prueba con otro cargador.")
             }

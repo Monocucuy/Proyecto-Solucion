@@ -1,5 +1,6 @@
 package com.monocucuy.solucion.ui
 
+import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.monocucuy.solucion.domain.Category
 import com.monocucuy.solucion.domain.Finding
 import com.monocucuy.solucion.domain.ScanReport
 import com.monocucuy.solucion.domain.Severity
@@ -27,6 +29,7 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     var showSettings by remember { mutableStateOf(false) }
 
+    val ctx = LocalContext.current
     MaterialTheme {
         Scaffold(
             topBar = {
@@ -38,9 +41,12 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
         ) { pad ->
             Box(Modifier.padding(pad).fillMaxSize()) {
                 when (val s = state) {
-                    UiState.Idle -> Home(onScan = vm::startScan)
+                    UiState.Idle -> Home(
+                        onScan = vm::startScan,
+                        onShareLog = { shareText(ctx, vm.debugText(), "Log de depuración") }
+                    )
                     is UiState.Scanning -> Progress(s, onCancel = vm::cancel)
-                    is UiState.Done -> Report(s.report, onRescan = vm::startScan)
+                    is UiState.Done -> Report(s.report, onRescan = vm::startScan, onTrust = vm::trust)
                     is UiState.Failed -> Failed(s.message, onRetry = vm::reset)
                 }
             }
@@ -59,7 +65,7 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
 }
 
 @Composable
-private fun Home(onScan: () -> Unit) = Column(
+private fun Home(onScan: () -> Unit, onShareLog: () -> Unit) = Column(
     Modifier.fillMaxSize().padding(24.dp),
     verticalArrangement = Arrangement.Center,
     horizontalAlignment = Alignment.CenterHorizontally
@@ -69,6 +75,8 @@ private fun Home(onScan: () -> Unit) = Column(
     Text("Revisamos apps, hardware y configuración del sistema.")
     Spacer(Modifier.height(32.dp))
     Button(onClick = onScan, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Escanear") }
+    Spacer(Modifier.height(8.dp))
+    TextButton(onClick = onShareLog) { Text("Compartir log de depuración") }
 }
 
 @Composable
@@ -93,7 +101,7 @@ private fun Progress(s: UiState.Scanning, onCancel: () -> Unit) = Column(
 }
 
 @Composable
-private fun Report(report: ScanReport, onRescan: () -> Unit) {
+private fun Report(report: ScanReport, onRescan: () -> Unit, onTrust: (String) -> Unit) {
     val ctx = LocalContext.current
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
@@ -102,23 +110,28 @@ private fun Report(report: ScanReport, onRescan: () -> Unit) {
                 Text("Puntaje de salud · ${report.appsScanned} apps revisadas")
                 Text(DateFormat.getDateTimeInstance().format(Date(report.timestamp)), fontSize = 12.sp)
                 Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Category.values().forEach { c ->
+                        val s = report.categoryScores[c] ?: 100
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("$s", fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = scoreColor(s))
+                            Text(c.label, fontSize = 12.sp)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onRescan) { Text("Escanear de nuevo") }
-                    OutlinedButton(onClick = {
-                        ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, reportText(report))
-                        }, "Compartir reporte"))
-                    }) { Text("Compartir") }
+                    OutlinedButton(onClick = { shareText(ctx, reportText(report), "Compartir reporte") }) { Text("Compartir") }
                 }
             }
         }
-        items(report.findings) { FindingCard(it) }
+        items(report.findings) { FindingCard(it, onTrust) }
     }
 }
 
 @Composable
-private fun FindingCard(f: Finding) = Card(Modifier.fillMaxWidth()) {
+private fun FindingCard(f: Finding, onTrust: (String) -> Unit) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(f.severity.name, color = severityColor(f.severity), fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -128,6 +141,10 @@ private fun FindingCard(f: Finding) = Card(Modifier.fillMaxWidth()) {
         Text(f.title, fontWeight = FontWeight.SemiBold)
         Text(f.detail, fontSize = 14.sp)
         f.action?.let { Text("→ $it", fontSize = 14.sp, fontWeight = FontWeight.Medium) }
+        // Malware (HIGH) no se puede ocultar: solo falsos positivos de permisos o sospechas.
+        if (f.pkg != null && f.severity != Severity.HIGH) {
+            TextButton(onClick = { onTrust(f.pkg) }) { Text("Confiar en esta app") }
+        }
     }
 }
 
@@ -185,6 +202,13 @@ private fun severityColor(s: Severity) = when (s) {
     Severity.MEDIUM -> Color(0xFFEF6C00)
     Severity.LOW -> Color(0xFFF9A825)
     Severity.INFO -> Color(0xFF546E7A)
+}
+
+private fun shareText(ctx: Context, text: String, title: String) {
+    ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+    }, title))
 }
 
 private fun reportText(r: ScanReport) = buildString {

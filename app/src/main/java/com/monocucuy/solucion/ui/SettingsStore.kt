@@ -26,4 +26,9 @@ class SettingsStore(ctx: Context) {
     var backendToken: String
         get() = prefs.getString("backend_token", "") ?: ""
         set(v) = prefs.edit().putString("backend_token", v.trim()).apply()
+
+    /** Paquetes marcados como confiables desde el reporte. Se ocultan sus hallazgos, salvo detecciones de malware. */
+    var trustedApps: Set<String>
+        get() = prefs.getStringSet("trusted_apps", emptySet()) ?: emptySet()
+        set(v) = prefs.edit().putStringSet("trusted_apps", v.toSet()).apply()
 }

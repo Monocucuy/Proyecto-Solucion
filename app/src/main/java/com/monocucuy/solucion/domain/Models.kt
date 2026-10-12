@@ -11,19 +11,23 @@ data class Finding(
     val severity: Severity,
     val title: String,
     val detail: String,
-    val action: String? = null
+    val action: String? = null,
+    /** Paquete de la app que originó el hallazgo; null si no es de una app puntual. */
+    val pkg: String? = null
 )
 
 data class ScanReport(
     val findings: List<Finding>,
     val score: Int,
     val appsScanned: Int,
+    val categoryScores: Map<Category, Int> = emptyMap(),
     val timestamp: Long = System.currentTimeMillis()
 ) {
     companion object {
         fun build(findings: List<Finding>, appsScanned: Int): ScanReport {
-            val score = (100 - findings.sumOf { it.severity.penalty }).coerceIn(0, 100)
-            return ScanReport(findings.sortedByDescending { it.severity }, score, appsScanned)
+            fun scoreOf(list: List<Finding>) = (100 - list.sumOf { it.severity.penalty }).coerceIn(0, 100)
+            val byCategory = Category.values().associateWith { c -> scoreOf(findings.filter { it.category == c }) }
+            return ScanReport(findings.sortedByDescending { it.severity }, scoreOf(findings), appsScanned, byCategory)
         }
     }
 }

@@ -37,8 +37,10 @@ class AppScanner(private val ctx: Context) {
         "com.amazon.venezia"
     )
 
+    /** [trusted]: paquetes que el usuario marcó como confiables; no entran al aviso de "fuera de tienda". */
     suspend fun scan(
         source: ReputationSource?,
+        trusted: Set<String>,
         onProgress: (current: Int, total: Int, label: String) -> Unit
     ): Result = withContext(Dispatchers.IO) {
         val pm = ctx.packageManager
@@ -46,7 +48,8 @@ class AppScanner(private val ctx: Context) {
             .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 && it.packageName != ctx.packageName }
 
         val findings = mutableListOf<Finding>()
-        val labelsByHash = LinkedHashMap<String, MutableList<String>>()
+        // sha256 -> (paquete, etiqueta) de cada app con ese APK
+        val labelsByHash = LinkedHashMap<String, MutableList<Pair<String, String>>>()
         var unhashed = 0
         val sideloaded = mutableListOf<String>()
 
@@ -64,7 +67,8 @@ class AppScanner(private val ctx: Context) {
                     Category.SECURITY, Severity.MEDIUM,
                     "$label pide permisos delicados",
                     "Combina ${perms.size} permisos de riesgo: ${perms.joinToString { it.substringAfterLast('.') }}.",
-                    "Revisa si realmente necesitas esta app."
+                    "Revisa si realmente necesitas esta app.",
+                    pkg = info.packageName
                 )
             }
 
@@ -73,12 +77,12 @@ class AppScanner(private val ctx: Context) {
             } else {
                 @Suppress("DEPRECATION") pm.getInstallerPackageName(info.packageName)
             }
-            if ((installer ?: "") !in trustedInstallers) sideloaded += label
+            if (info.packageName !in trusted && (installer ?: "") !in trustedInstallers) sideloaded += label
 
             // Solo se calcula el hash; el APK nunca sale del dispositivo.
             if (source != null) {
                 val sha = runCatching { sha256(info.sourceDir) }.getOrNull()
-                if (sha == null) unhashed++ else labelsByHash.getOrPut(sha) { mutableListOf() } += label
+                if (sha == null) unhashed++ else labelsByHash.getOrPut(sha) { mutableListOf() } += (info.packageName to label)
             }
         }
 
@@ -106,19 +110,21 @@ class AppScanner(private val ctx: Context) {
             for ((sha, labels) in labelsByHash) {
                 val rep = reps[sha] ?: Rep(Verdict.UNKNOWN, error = "unavailable")
                 rep.error?.let { errors.merge(it, labels.size, Int::plus) }
-                for (label in labels) {
+                for ((pkg, label) in labels) {
                     when (rep.verdict) {
                         Verdict.MALICIOUS -> findings += Finding(
                             Category.SECURITY, Severity.HIGH,
                             "$label detectada como maliciosa",
                             "${rep.malicious} motores antivirus la marcan como maliciosa.",
-                            "Desinstálala ahora."
+                            "Desinstálala ahora.",
+                            pkg = pkg
                         )
                         Verdict.SUSPICIOUS -> findings += Finding(
                             Category.SECURITY, Severity.MEDIUM,
                             "$label es sospechosa",
                             "Marcada por ${rep.malicious + rep.suspicious} motor(es). Puede ser falso positivo.",
-                            "Verifica el origen o desinstálala."
+                            "Verifica el origen o desinstálala.",
+                            pkg = pkg
                         )
                         Verdict.UNKNOWN -> if (rep.error == null) unknownCount++
                         Verdict.CLEAN -> Unit
