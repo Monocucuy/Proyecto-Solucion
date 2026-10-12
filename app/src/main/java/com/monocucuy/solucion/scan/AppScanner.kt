@@ -25,6 +25,18 @@ class AppScanner(private val ctx: Context) {
         "android.permission.BIND_DEVICE_ADMIN"
     )
 
+    // Apps que piden permisos de riesgo por diseño (p. ej. WhatsApp usa SMS para verificar el número).
+    private val permWhitelist = setOf("com.whatsapp", "com.whatsapp.w4b")
+
+    // Tiendas de fabricante: instalar desde ellas no es motivo de alerta.
+    private val trustedInstallers = setOf(
+        "com.android.vending",
+        "com.xiaomi.discover",
+        "com.sec.android.app.samsungapps",
+        "com.huawei.appmarket",
+        "com.amazon.venezia"
+    )
+
     suspend fun scan(
         source: ReputationSource?,
         onProgress: (current: Int, total: Int, label: String) -> Unit
@@ -36,13 +48,14 @@ class AppScanner(private val ctx: Context) {
         val findings = mutableListOf<Finding>()
         val labelsByHash = LinkedHashMap<String, MutableList<String>>()
         var unhashed = 0
+        val sideloaded = mutableListOf<String>()
 
         apps.forEachIndexed { i, info ->
             val label = pm.getApplicationLabel(info).toString()
             onProgress(i + 1, apps.size, label)
 
             // --- Heurísticas locales (funcionan sin internet) ---
-            val perms = runCatching {
+            val perms = if (info.packageName in permWhitelist) emptyList<String>() else runCatching {
                 pm.getPackageInfo(info.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions
             }.getOrNull().orEmpty().filter { it in riskyPerms }
 
@@ -60,20 +73,23 @@ class AppScanner(private val ctx: Context) {
             } else {
                 @Suppress("DEPRECATION") pm.getInstallerPackageName(info.packageName)
             }
-            if (installer != "com.android.vending") {
-                findings += Finding(
-                    Category.SECURITY, Severity.LOW,
-                    "$label no viene de Google Play",
-                    "Instalada desde: ${installer ?: "origen desconocido / APK manual"}.",
-                    "Instala apps solo de fuentes que conozcas."
-                )
-            }
+            if ((installer ?: "") !in trustedInstallers) sideloaded += label
 
             // Solo se calcula el hash; el APK nunca sale del dispositivo.
             if (source != null) {
                 val sha = runCatching { sha256(info.sourceDir) }.getOrNull()
                 if (sha == null) unhashed++ else labelsByHash.getOrPut(sha) { mutableListOf() } += label
             }
+        }
+
+        // Un solo hallazgo para todas: así la penalización es fija (3 puntos) y no por app.
+        if (sideloaded.isNotEmpty()) {
+            findings += Finding(
+                Category.SECURITY, Severity.LOW,
+                "${sideloaded.size} app(s) no vienen de una tienda conocida",
+                "Por ejemplo: ${sideloaded.take(10).joinToString()}.",
+                "Instala apps solo de fuentes que conozcas."
+            )
         }
 
         // --- Reputación por hash ---
