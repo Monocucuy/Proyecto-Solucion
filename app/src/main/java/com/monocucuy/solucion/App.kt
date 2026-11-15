@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.room.Room
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.monocucuy.solucion.bt.BandaBluetooth
 import com.monocucuy.solucion.data.local.AppDb
 import com.monocucuy.solucion.data.remote.BackendApi
 import com.monocucuy.solucion.data.remote.VirusTotalApi
@@ -84,6 +85,7 @@ class AppContainer(ctx: Context) {
         return if (key.isNotBlank()) DirectSource(repo, key) else null
     }
 
+    val banda = BandaBluetooth(ctx)
     val appScanner = AppScanner(ctx)
     val hardware = HardwareChecker(ctx)
     val hardwareTests = HardwareTests(ctx)

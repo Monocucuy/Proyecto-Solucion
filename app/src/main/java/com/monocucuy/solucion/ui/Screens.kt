@@ -1,8 +1,11 @@
 package com.monocucuy.solucion.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,7 +31,14 @@ import java.util.Date
 @Composable
 fun ScannerApp(vm: ScanViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val banda by vm.banda.collectAsStateWithLifecycle()
     var showSettings by remember { mutableStateOf(false) }
+
+    // Android 12+ pide BLUETOOTH_CONNECT antes de escanear; se escanea igual aunque lo nieguen (la banda queda sin aviso).
+    val pedirBluetooth = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.startScan() }
+    val escanear: () -> Unit = {
+        if (vm.puedeBluetooth()) vm.startScan() else pedirBluetooth.launch(Manifest.permission.BLUETOOTH_CONNECT)
+    }
 
     val ctx = LocalContext.current
     var manualOpen by remember { mutableStateOf(false) }
@@ -53,12 +63,12 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
             Box(Modifier.padding(pad).fillMaxSize()) {
                 when (val s = state) {
                     UiState.Idle -> Home(
-                        onScan = vm::startScan,
+                        onScan = escanear,
                         onManual = { manualOpen = true },
                         onShareLog = { shareText(ctx, vm.debugText(), "Log de depuración") }
                     )
                     is UiState.Scanning -> Progress(s, onCancel = vm::cancel)
-                    is UiState.Done -> Report(s.report, onRescan = vm::startScan, onTrust = vm::trust)
+                    is UiState.Done -> Report(s.report, banda, onRescan = escanear, onTrust = vm::trust)
                     is UiState.Failed -> Failed(s.message, onRetry = vm::reset)
                 }
             }
@@ -115,7 +125,7 @@ private fun Progress(s: UiState.Scanning, onCancel: () -> Unit) = Column(
 }
 
 @Composable
-private fun Report(report: ScanReport, onRescan: () -> Unit, onTrust: (String) -> Unit) {
+private fun Report(report: ScanReport, banda: String, onRescan: () -> Unit, onTrust: (String) -> Unit) {
     val ctx = LocalContext.current
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
@@ -123,6 +133,7 @@ private fun Report(report: ScanReport, onRescan: () -> Unit, onTrust: (String) -
                 Text("${report.score}", fontSize = 64.sp, fontWeight = FontWeight.Bold, color = scoreColor(report.score))
                 Text("Puntaje de salud · ${report.appsScanned} apps revisadas")
                 Text(DateFormat.getDateTimeInstance().format(Date(report.timestamp)), fontSize = 12.sp)
+                if (banda.isNotBlank()) Text(banda, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Category.values().forEach { c ->

@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.monocucuy.solucion.App
+import com.monocucuy.solucion.bt.letraParaBanda
 import com.monocucuy.solucion.domain.Finding
 import com.monocucuy.solucion.domain.ScanReport
 import com.monocucuy.solucion.domain.Severity
@@ -27,6 +28,24 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow<UiState>(UiState.Idle)
     val state: StateFlow<UiState> = _state
     private var job: Job? = null
+
+    /** Estado del envío a la banda transportadora; vacío mientras no hay escaneo terminado. */
+    private val _banda = MutableStateFlow("")
+    val banda: StateFlow<String> = _banda
+
+    fun puedeBluetooth(): Boolean = c.banda.tienePermiso()
+
+    /** Al terminar el escaneo: puntaje bajo = 'R' (revisión humana), si no 'A' (sigue derecho). */
+    private suspend fun enviarABanda(score: Int) {
+        val letra = letraParaBanda(score)
+        _banda.value = "Banda: enviando $letra…"
+        // Un fallo del Bluetooth no debe convertir un escaneo exitoso en "Algo falló".
+        val error = try { c.banda.enviar(letra) } catch (e: CancellationException) { throw e } catch (e: Exception) { e.message ?: "error desconocido" }
+        _banda.value = if (error == null) {
+            "Banda: se envió $letra (${if (letra == 'R') "revisión humana" else "sigue derecho"})"
+        } else "Banda: $error"
+        c.debug.log(_banda.value)
+    }
 
     // Hallazgos sin filtrar del último escaneo; el reporte se arma desde aquí para poder ocultar confiables.
     private var lastFindings: List<Finding> = emptyList()
@@ -53,6 +72,7 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startScan() {
         if (job?.isActive == true) return
+        _banda.value = ""
         job = viewModelScope.launch {
             val t0 = System.currentTimeMillis()
             try {
@@ -99,6 +119,7 @@ class ScanViewModel(app: Application) : AndroidViewModel(app) {
                 c.debug.log("Fin · ${System.currentTimeMillis() - t0} ms · puntaje ${report.score} · " +
                     "hallazgos ${report.findings.size} ${report.findings.groupingBy { it.severity }.eachCount()}")
                 _state.value = UiState.Done(report)
+                enviarABanda(report.score)
             } catch (e: CancellationException) {
                 c.debug.log("Cancelado tras ${System.currentTimeMillis() - t0} ms")
                 _state.value = UiState.Idle
