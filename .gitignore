@@ -9,3 +9,6 @@ captures/
 *.apk
 *.jks
 *.keystore
+
+# Llave de depuración compartida (pública a propósito): misma firma en todas las APK de prueba
+!app/debug-compartido.keystore

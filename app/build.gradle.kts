@@ -14,8 +14,21 @@ android {
         applicationId = "com.monocucuy.solucion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-mvp"
+        // Minutos desde 1970: siempre sube entre compilaciones (CI o local), así Android deja actualizar encima.
+        versionCode = (System.currentTimeMillis() / 60_000).toInt()
+        versionName = "0.3.0-early-access"
+    }
+
+    // Antes cada ejecución de GitHub Actions firmaba con una llave de depuración nueva y Android
+    // rechazaba la actualización ("conflicto con un paquete existente"). Esta llave de depuración
+    // es pública a propósito (contraseña "android", como la de Android Studio): solo para APK de prueba.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug-compartido.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {

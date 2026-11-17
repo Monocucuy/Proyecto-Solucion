@@ -40,15 +40,27 @@ class BandaBluetooth(private val ctx: Context) {
             val banda = adapter.bondedDevices.firstOrNull { it.name == NOMBRE }
                 ?: return@withContext "empareja primero $NOMBRE (PIN 1233) en Ajustes de Android"
             // Sin cancelDiscovery(): en Android 12+ exige BLUETOOTH_SCAN y aquí nunca buscamos dispositivos.
-            banda.createRfcommSocketToServiceRecord(SPP).use { socket ->
-                socket.connect()
-                socket.outputStream.write(letra.code)
-                socket.outputStream.flush()
-                Thread.sleep(300) // deja que la letra salga antes de cerrar
+            // Primero el socket seguro; si el ESP32 lo corta ("read failed, socket might closed"),
+            // se reintenta con el inseguro, que es el que suelen aceptar los módulos SPP.
+            var ultimo: IOException? = null
+            for (abrir in listOf({ banda.createRfcommSocketToServiceRecord(SPP) },
+                                 { banda.createInsecureRfcommSocketToServiceRecord(SPP) })) {
+                try {
+                    abrir().use { socket ->
+                        socket.connect()
+                        socket.outputStream.write(letra.code)
+                        socket.outputStream.flush()
+                        Thread.sleep(300) // deja que la letra salga antes de cerrar
+                    }
+                    return@withContext null
+                } catch (e: IOException) {
+                    ultimo = e
+                    Thread.sleep(500)
+                }
             }
-            null
+            throw ultimo!!
         } catch (e: IOException) {
-            "no se pudo conectar con la banda (${e.message ?: "sin detalle"})"
+            "no se pudo conectar con la banda: revisa que el ESP32 esté encendido y cerca (${e.message ?: "sin detalle"})"
         } catch (e: SecurityException) {
             "Android negó el permiso de Bluetooth (${e.message ?: "sin detalle"})"
         }

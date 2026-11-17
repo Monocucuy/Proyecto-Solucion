@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,12 +44,19 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
     val ctx = LocalContext.current
     var manualOpen by remember { mutableStateOf(false) }
     var running by remember { mutableStateOf<ManualTest?>(null) }
+    var portada by rememberSaveable { mutableStateOf(true) }
     BackHandler(enabled = manualOpen || running != null) {
         if (running != null) running = null else manualOpen = false
     }
+    // Atrás del celular en el flujo automático: durante el escaneo cancela; en el reporte o el error vuelve al inicio.
+    BackHandler(enabled = !manualOpen && running == null && state != UiState.Idle) {
+        if (state is UiState.Scanning) vm.cancel() else vm.reset()
+    }
     MaterialTheme {
         val current = running
-        if (current != null) {
+        if (portada) {
+            Portada(onEmpezar = { portada = false })
+        } else if (current != null) {
             ManualTestHost(current) { result -> vm.saveManual(current, result); running = null }
         } else if (manualOpen) {
             ManualTestsList(vm.manual, onRun = { running = it }, onBack = { manualOpen = false })
@@ -56,6 +64,16 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
             topBar = {
                 TopAppBar(
                     title = { Text("Solución Scanner") },
+                    navigationIcon = {
+                        // Flecha de volver en todo el flujo automático; en el inicio vuelve a la portada.
+                        TextButton(onClick = {
+                            when (state) {
+                                UiState.Idle -> portada = true
+                                is UiState.Scanning -> vm.cancel()
+                                else -> vm.reset()
+                            }
+                        }) { Text("←", fontSize = 22.sp) }
+                    },
                     actions = { TextButton(onClick = { showSettings = true }) { Text("Ajustes") } }
                 )
             }
@@ -68,7 +86,7 @@ fun ScannerApp(vm: ScanViewModel = viewModel()) {
                         onShareLog = { shareText(ctx, vm.debugText(), "Log de depuración") }
                     )
                     is UiState.Scanning -> Progress(s, onCancel = vm::cancel)
-                    is UiState.Done -> Report(s.report, banda, onRescan = escanear, onTrust = vm::trust)
+                    is UiState.Done -> Report(s.report, banda, onRescan = escanear, onTrust = vm::trust, onHome = vm::reset)
                     is UiState.Failed -> Failed(s.message, onRetry = vm::reset)
                 }
             }
@@ -116,16 +134,16 @@ private fun Progress(s: UiState.Scanning, onCancel: () -> Unit) = Column(
         Spacer(Modifier.height(8.dp))
         Text("${s.current} / ${s.total} · ${s.label}")
         Spacer(Modifier.height(8.dp))
-        Text("Con la clave gratuita de VirusTotal esto puede tardar varios minutos.", fontSize = 12.sp)
+        Text("Si configuraste VirusTotal en Ajustes, esto puede tardar varios minutos.", fontSize = 12.sp)
     } else {
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     }
     Spacer(Modifier.height(24.dp))
-    OutlinedButton(onClick = onCancel) { Text("Cancelar") }
+    OutlinedButton(onClick = onCancel) { Text("Cancelar escaneo") }
 }
 
 @Composable
-private fun Report(report: ScanReport, banda: String, onRescan: () -> Unit, onTrust: (String) -> Unit) {
+private fun Report(report: ScanReport, banda: String, onRescan: () -> Unit, onTrust: (String) -> Unit, onHome: () -> Unit) {
     val ctx = LocalContext.current
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
@@ -149,6 +167,7 @@ private fun Report(report: ScanReport, banda: String, onRescan: () -> Unit, onTr
                     Button(onClick = onRescan) { Text("Escanear de nuevo") }
                     OutlinedButton(onClick = { shareText(ctx, reportText(report), "Compartir reporte") }) { Text("Compartir") }
                 }
+                TextButton(onClick = onHome) { Text("← Volver al inicio") }
             }
         }
         items(report.findings) { FindingCard(it, onTrust) }

@@ -10,8 +10,12 @@ import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.ToneGenerator
+import android.media.AudioAttributes
+import android.os.Build
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +24,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,10 +57,11 @@ enum class ManualTest(val title: String) {
 
 @Composable
 fun ManualTestsList(results: Map<ManualTest, Finding>, onRun: (ManualTest) -> Unit, onBack: () -> Unit) = Column(
-    Modifier.fillMaxSize().padding(16.dp),
-    verticalArrangement = Arrangement.spacedBy(8.dp)
+    Modifier.fillMaxSize()
 ) {
-    Text("Pruebas manuales", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+    BarraVolver("Pruebas manuales", onBack)
+    Column(Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text("Los resultados se incluyen en el próximo escaneo.", fontSize = 13.sp)
     ManualTest.values().forEach { t ->
         Card(Modifier.fillMaxWidth()) {
@@ -66,18 +73,39 @@ fun ManualTestsList(results: Map<ManualTest, Finding>, onRun: (ManualTest) -> Un
         }
     }
     Spacer(Modifier.height(8.dp))
-    TextButton(onClick = onBack) { Text("Volver") }
+    OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("← Volver al inicio") }
+    }
 }
+
+/** Barra superior con flecha de volver: en todas las pantallas que no son el inicio. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BarraVolver(titulo: String, onBack: () -> Unit, accion: (@Composable () -> Unit)? = null) = TopAppBar(
+    title = { Text(titulo) },
+    navigationIcon = { TextButton(onClick = onBack) { Text("←", fontSize = 22.sp) } },
+    actions = { accion?.invoke() }
+)
 
 /** Ejecuta una prueba. [onDone] recibe el resultado, o null si el usuario sale sin terminar. */
 @Composable
-fun ManualTestHost(test: ManualTest, onDone: (Finding?) -> Unit) = when (test) {
-    ManualTest.SCREEN -> ScreenTest(onDone)
-    ManualTest.TOUCH -> TouchTest(onDone)
-    ManualTest.SPEAKER -> SpeakerTest(onDone)
-    ManualTest.VIBRATION -> VibrationTest(onDone)
-    ManualTest.MIC -> MicTest(onDone)
-    ManualTest.CAMERA -> CameraTest(onDone)
+fun ManualTestHost(test: ManualTest, onDone: (Finding?) -> Unit) {
+    // La prueba de pantalla usa colores a pantalla completa: se sale con atrás o con "Cancelar prueba".
+    if (test == ManualTest.SCREEN) { ScreenTest(onDone); return }
+    Column(Modifier.fillMaxSize()) {
+        BarraVolver("Prueba: ${test.title}", onBack = { onDone(null) }) {
+            TextButton(onClick = { onDone(null) }) { Text("Cancelar") }
+        }
+        Box(Modifier.weight(1f)) {
+            when (test) {
+                ManualTest.SCREEN -> Unit
+                ManualTest.TOUCH -> TouchTest(onDone)
+                ManualTest.SPEAKER -> SpeakerTest(onDone)
+                ManualTest.VIBRATION -> VibrationTest(onDone)
+                ManualTest.MIC -> MicTest(onDone)
+                ManualTest.CAMERA -> CameraTest(onDone)
+            }
+        }
+    }
 }
 
 @Composable
@@ -111,6 +139,8 @@ private fun ScreenTest(onDone: (Finding?) -> Unit) {
                     "Manchas, líneas o píxeles muertos en la revisión.",
                     "Si está en garantía, revísala en servicio técnico."))
             }) { Text("Sí") }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = { onDone(null) }) { Text("Cancelar prueba") }
         }
     }
 }
@@ -203,20 +233,26 @@ private fun SpeakerTest(onDone: (Finding?) -> Unit) {
     }
 }
 
-/** Vibra 3 s y pregunta si se sintió: el motor puede existir y estar apagado en Ajustes. */
+/**
+ * Vibra en pulsos y pregunta si se sintió. Antes vibraba 3 s seguidos con la intensidad por defecto y en
+ * celulares Xiaomi/Redmi no se sentía si la vibración del sistema estaba baja o apagada. Ahora usa el
+ * vibrador por defecto (VibratorManager en Android 12+), intensidad máxima y uso ALARMA.
+ */
 @Composable
 private fun VibrationTest(onDone: (Finding?) -> Unit) {
     val ctx = LocalContext.current
     var vibrating by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf(false) }
     var hasMotor by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) {
-        val vib = ctx.getSystemService(Vibrator::class.java)
+    var intento by remember { mutableIntStateOf(0) }
+    val vib = remember { vibrador(ctx) }
+    DisposableEffect(Unit) { onDispose { vib?.cancel() } }
+    LaunchedEffect(intento) {
         if (vib == null || !vib.hasVibrator()) {
             hasMotor = false
         } else {
             vibrating = true
-            vib.vibrate(VibrationEffect.createOneShot(VIBRATION_MS, VibrationEffect.DEFAULT_AMPLITUDE))
+            vibrarFuerte(vib)
             delay(VIBRATION_MS)
             vibrating = false
         }
@@ -225,7 +261,7 @@ private fun VibrationTest(onDone: (Finding?) -> Unit) {
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
         when {
-            vibrating -> Text("Vibrando 3 s…")
+            vibrating -> Text("Vibrando en pulsos 3 s… sostén el celular en la mano.")
             !done -> Text("Preparando vibración…")
             !hasMotor -> {
                 Text("El sistema no reporta motor de vibración.")
@@ -244,11 +280,32 @@ private fun VibrationTest(onDone: (Finding?) -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = {
                     onDone(Finding(Category.HARDWARE, Severity.MEDIUM, "Vibración: no percibida",
-                        "El usuario no sintió la vibración.",
-                        "Revisa que la vibración esté activa en Ajustes > Sonido y vibración."))
+                        "El usuario no sintió la vibración (pulsos a intensidad máxima, ${intento + 1} intento(s)).",
+                        "Revisa en Ajustes > Sonido y vibración que la vibración no esté desactivada; si sigue sin sentirse, revisa el motor."))
                 }) { Text("No") }
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { done = false; intento++ }) { Text("Vibrar otra vez") }
             }
         }
+    }
+}
+
+private fun vibrador(ctx: android.content.Context): Vibrator? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        ctx.getSystemService(VibratorManager::class.java)?.defaultVibrator
+    else ctx.getSystemService(Vibrator::class.java)
+
+/** 6 pulsos de 350 ms con 150 ms de pausa (3 s), a intensidad máxima si el motor la regula. */
+private fun vibrarFuerte(vib: Vibrator) {
+    val tiempos = longArrayOf(0, 350, 150, 350, 150, 350, 150, 350, 150, 350, 150, 350)
+    val fuerza = IntArray(tiempos.size) { if (it % 2 == 1) 255 else 0 }
+    val efecto = if (vib.hasAmplitudeControl()) VibrationEffect.createWaveform(tiempos, fuerza, -1)
+                 else VibrationEffect.createWaveform(tiempos, -1)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        vib.vibrate(efecto, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+    } else {
+        @Suppress("DEPRECATION")
+        vib.vibrate(efecto, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
     }
 }
 
