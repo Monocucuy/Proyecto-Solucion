@@ -1,4 +1,30 @@
-# v0.2.0-early-access (pre-release)
+# v0.3.0-early-access (pre-release)
+
+Fecha: 17-nov-2026. App **Solución Scanner 0.3.0** + firmware de la banda. Documentación técnica de la app: [`docs/APP.md`](https://github.com/Monocucuy/Proyecto-Solucion/blob/bluetooth-banda/docs/APP.md).
+
+## Qué cambió
+
+- **Portada** animada al abrir la app.
+- **Botones de volver y cancelar** en el escaneo, el reporte, la lista de pruebas manuales y cada prueba.
+- **Vibrador**: pulsos a intensidad máxima (uso alarma) y botón "Vibrar otra vez"; antes no se sentía en Xiaomi/Redmi.
+- **Bluetooth**: si la conexión segura falla ("read failed"), reintenta con la insegura.
+- **Actualizar**: todas las APK de prueba se firman con la misma llave y el número de versión siempre sube.
+
+> **Importante:** si tienes una APK anterior (0.1 o 0.2), desinstálala **una sola vez** antes de instalar esta. Desde la 0.3.0 las siguientes se actualizan encima.
+
+## Instalar
+
+1. Descarga `solucion-scanner-early-access-debug.apk` desde el celular.
+2. Permite instalar apps de orígenes desconocidos para el navegador.
+3. Google Play Protect avisa que la app no está verificada: **Más detalles → Instalar de todas formas**.
+4. Si pregunta si quieres enviar la app a Google para revisarla: **No enviar**.
+5. Acepta el permiso de Bluetooth (dispositivos cercanos), vincula `BANDA-ESP32` en Ajustes y escanea.
+
+Veredicto: menos de 80 puntos manda `R` (revisión humana); 80 o más manda `A`. Las correcciones de esta versión **no se han probado** todavía en el celular del equipo.
+
+---
+
+# Notas de v0.2.0-early-access
 
 Fecha: 17-nov-2026. Estado: **Early Access**. Es una pre-release: la app con Bluetooth y la banda transportadora **no están validadas de punta a punta**.
 

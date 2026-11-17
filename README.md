@@ -6,7 +6,17 @@ App Android (Kotlin + Jetpack Compose) que revisa el celular y entrega un puntaj
 - **Hardware:** batería, almacenamiento, RAM, estado térmico, sensores (solo APIs públicas, sin root).
 - **Sistema:** versión de Android, parche de seguridad, bloqueo de pantalla, depuración USB.
 
-Documento de producto: [`docs/MVP.md`](docs/MVP.md)
+Documento de producto: [`docs/MVP.md`](docs/MVP.md) · **Documentación técnica de la app (puntaje, Bluetooth, instalación, historial): [`docs/APP.md`](docs/APP.md)**
+
+## Banda clasificadora (parte física)
+
+Al terminar el escaneo la app manda `A` (80 puntos o más: sigue derecho) o `R` (menos de 80: revisión humana) por Bluetooth al ESP32 `BANDA-ESP32`, y un servo desvía el celular en una banda transportadora de Lego Technic.
+
+- Firmware, conexiones y calibración: [`hardware/banda/`](hardware/banda/README.md)
+- Problemas abiertos: [issues con la etiqueta `banda-transportadora`](https://github.com/Monocucuy/Proyecto-Solucion/issues?q=label%3Abanda-transportadora)
+- APK y firmware: [versiones `*-early-access`](https://github.com/Monocucuy/Proyecto-Solucion/releases)
+
+> VirusTotal quedó como opción en **Ajustes**: en las pruebas un escaneo con reputación podía tardar más de 5 minutos, así que la app funciona por defecto solo con heurísticas locales.
 
 Backend opcional de reputación (cache compartido + cola con límite de tasa): [`backend/`](backend/README.md).
 En **Ajustes** puedes poner su URL y token; sin URL la app consulta VirusTotal directo con tu clave.
