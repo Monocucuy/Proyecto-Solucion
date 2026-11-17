@@ -3,7 +3,7 @@ name: Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ccr-865225cd-h4ytep, main]
+    branches: [ccr-865225cd-h4ytep, main, bluetooth-banda]
     paths: ['app/**', 'build.gradle.kts', 'settings.gradle.kts', 'gradle/**', '.github/workflows/android-apk.yml']
 
 permissions:
