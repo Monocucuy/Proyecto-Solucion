@@ -21,6 +21,7 @@ Fecha: 17-nov-2026. Estado: **Early Access** (prototipo; se publica como pre-rel
 | [CALIBRACION.md](CALIBRACION.md) | Ángulos de la compuerta y cómo ajustarlos |
 | [LIMITACIONES.md](LIMITACIONES.md) | Lo que no se probó y lo que no sirve |
 | [`docs/`](docs/LEEME_docs.md) | Imágenes y PDF del informe (se agregan después) |
+| [`modelo_3d/`](modelo_3d/README.md) | Modelos de Blender: diseño V2 (3-nov) y prototipo final (17-nov) con su `.bat` de render |
 
 ## Resumen del montaje
 
@@ -90,3 +91,4 @@ El comentario del firmware dice que el Monitor Serie del PC a 9600 también pued
 - [LIMITACIONES.md](LIMITACIONES.md): pruebas que faltan y lo que no sirve.
 - [pruebas/LEEME.md](pruebas/LEEME.md): sketches de prueba.
 - [docs/LEEME_docs.md](docs/LEEME_docs.md): imágenes y PDF que se agregan después.
+- [modelo_3d/README.md](modelo_3d/README.md): archivos de Blender y cómo renderizarlos.
