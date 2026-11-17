@@ -32,7 +32,7 @@ Nota: el equipo dijo que todas eran del 17-nov, pero `ba252221` y `5401665a` mue
 |---|---|---|
 | `esquema_l293d.png` | Esquema de conexión del L293D | **Histórico**: el chip se quemó y se descartó |
 | `banda_switches_posicion.jpg` | Foto cenital con S1, S2, servo y motor marcados (archivo del 14-nov-2026) | **Versión anterior**: S1 aparece después del servo y hay cajas OK y REVISIÓN; la posición final de S1 es ≈ 4 cm antes del servo. Se ven piernas y zapatos de una persona: recortar |
-| `resistencias_marcadas.jpg` | Resistencias numeradas con su valor (220 Ω, 680 Ω, 1 kΩ y dos sin identificar) | Apoyo para el cableado; no muestra 510 Ω ni 100 Ω |
+| `resistencias_marcadas.jpg` | Resistencias numeradas con su valor (220 Ω, 680 Ω, 1 kΩ y dos sin identificar) | Resistencias del taller; el montaje final no usa ninguna. No muestra 510 Ω ni 100 Ω |
 
 ## Por generar (todavía no existen)
 

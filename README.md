@@ -26,7 +26,7 @@ Pendiente de verificar con claves reales y en Android Studio: [`docs/HANDOFF-LOC
 
 1. Abre la carpeta en **Android Studio** (Ladybug o más nuevo, JDK 17). Deja que sincronice Gradle.
 2. Ejecuta en un celular físico o emulador con API 26+.
-3. En la app: **Ajustes** → pega tu clave gratuita de https://www.virustotal.com (perfil → API key).
+3. Opcional, no recomendado (en las pruebas tardaba más de 5 minutos): en la app, **Ajustes** → pega tu clave gratuita de https://www.virustotal.com (perfil → API key).
 4. Toca **Escanear**.
 
 Sin clave, la app corre hardware, sistema y heurísticas locales; solo se omite la reputación por hash.

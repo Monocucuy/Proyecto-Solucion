@@ -46,13 +46,13 @@ Cada hallazgo tiene una severidad que resta puntos: INFO resta 0, LOW resta 3, M
 | LOW | 3 | Apps que no vienen de una tienda conocida (se resta una sola vez), depuración USB activa, sin acelerómetro |
 | INFO | 0 | Datos del equipo: batería, RAM, sensores, cámaras |
 *Nota.* Valores de `domain/Models.kt` y de los módulos de `scan/`.
-La la figura muestra dos escaneos reales del mismo celular el 17 de noviembre de 2026. En el de las 4:22 a. m. hubo un hallazgo HIGH en Sistema (parche de seguridad de hace 504 días, −20) y uno LOW en Seguridad (14 apps fuera de tienda, −3): Seguridad 97, Hardware 100, Sistema 80 y total 100 − 20 − 3 = **77**. En el de las 9:10 a. m. se sumó la prueba manual de vibración como "no percibida" (MEDIUM, −8): Hardware bajó a 92 y el total a 100 − 20 − 8 − 3 = **69**.
+La figura muestra dos escaneos reales del mismo celular el 17 de noviembre de 2026. En el de las 4:22 a. m. hubo un hallazgo HIGH en Sistema (parche de seguridad de hace 504 días, −20) y uno LOW en Seguridad (14 apps fuera de tienda, −3): Seguridad 97, Hardware 100, Sistema 80 y total 100 − 20 − 3 = **77**. En el de las 9:10 a. m. se sumó la prueba manual de vibración como "no percibida" (MEDIUM, −8): Hardware bajó a 92 y el total a 100 − 20 − 8 − 3 = **69**.
 
 ![Reportes de la app: 77 puntos (4:22 a. m., izquierda) y 69 puntos (9:10 a. m., derecha)](img/app_puntajes_77_69.jpg)
 
 *Nota.* Capturas del celular de prueba del equipo, 17 de noviembre de 2026. En la de las 4:22 la banda no recibió la orden porque Android negó el permiso de Bluetooth (corregido en el commit `c916f4c`); en la de las 9:10 la conexión falló con "read failed" (se agregó un reintento en la versión 0.3.0).
 ### 7.4 Veredicto y Bluetooth
-Con el puntaje la app decide la letra: menos de 80 puntos es `R` (revisión humana) y 80 o más es `A` (sigue derecho). Un celular con 79 puntos va a revisión. Los dos escaneos de la la figura habrían mandado `R`.
+Con el puntaje la app decide la letra: menos de 80 puntos es `R` (revisión humana) y 80 o más es `A` (sigue derecho). Un celular con 79 puntos va a revisión. Los dos escaneos de la figura habrían mandado `R`.
 El flujo es el siguiente: se enciende la banda y el ESP32 aparece en el Bluetooth del celular como `BANDA-ESP32`; se vincula una sola vez desde los ajustes de Android y queda guardado. No hace falta que esté conectado todo el tiempo: la app abre la conexión al terminar el escaneo, manda la letra, espera 300 ms y la cierra. El ESP32 la pasa al Arduino, que mueve el servo cuando el celular llega a la compuerta (secciones 5 y 6). En la versión 0.3.0, si la conexión segura falla, la app reintenta con una conexión insegura, que es la que suelen aceptar los módulos SPP.
 
 **Mensajes del protocolo Bluetooth**
@@ -62,7 +62,7 @@ El flujo es el siguiente: se enciende la banda y el ESP32 aparece en el Bluetoot
 | Celular → ESP32 | `A` | Celular aprobado: la compuerta abre a 78° |
 | Celular → ESP32 | `R` | Celular a revisión: la compuerta abre a 33° |
 | ESP32 → celular | `Enviado: A` / `Enviado: R` | El ESP32 pasó la orden al Arduino |
-| Arduino → celular (opcional) | Texto libre | Mensajes del Arduino, solo con el cable de retorno |
+| Arduino → celular (previsto, no montado) | Texto libre | Mensajes del Arduino; requieren el cable de retorno, que no está montado |
 > **Diferencia con el manual de usuario.** El manual decía que un celular es OK con 70 puntos o más (Equipo Proyecto Solución, 2026b). El equipo decidió mantener el umbral en 80 (79 o menos va a revisión humana); el manual se corregirá cuando se retome.
 ### 7.5 Por qué se dejó de usar VirusTotal
 Las primeras versiones beta revisaban la reputación de cada app enviando su hash a VirusTotal. En las pruebas, ese paso dependía de cuántas apps tenía el celular, del límite de consultas de la clave gratuita y de servicios de terceros, y podía tardar más de 5 minutos por celular. Para una estación que debe clasificar celulares en fila eso no sirve, así que el equipo decidió no usarlo. El código sigue ahí como opción en *Ajustes* (servidor propio o clave de VirusTotal), pero sin configurarlo la app usa solo heurísticas locales (origen de la app, permisos) y el escaneo es rápido.
@@ -90,7 +90,7 @@ Según el equipo, la app responde rápido, el escaneo funciona con internet, las
 ### 7.8 Registro de depuración
 La app guarda un log en el celular (máximo 200 kB) que se comparte desde el inicio con "Compartir log de depuración". Registra, sin claves ni nombres de apps: marca, modelo y versión de Android; el modo de reputación; lo que tardó cada etapa en milisegundos; el puntaje y los hallazgos por severidad; el resultado del envío a la banda; y los errores con su detalle. Ese log sirvió para encontrar el error de permisos de Bluetooth del 17 de noviembre.
 ### 7.9 Historia del código en GitHub
-La la tabla resume los cambios del repositorio, del primer commit a la versión 0.3.0. Como el equipo no tiene Android Studio ni el SDK de Android instalados, cada cambio se sube a GitHub y GitHub Actions corre las pruebas unitarias y compila la APK; si las pruebas fallan, no se publica nada.
+La tabla resume los cambios del repositorio, del primer commit a la versión 0.3.0. Como el equipo no tiene Android Studio ni el SDK de Android instalados, cada cambio se sube a GitHub y GitHub Actions corre las pruebas unitarias y compila la APK; si las pruebas fallan, no se publica nada.
 
 **Historial de cambios de la app y la banda en GitHub**
 

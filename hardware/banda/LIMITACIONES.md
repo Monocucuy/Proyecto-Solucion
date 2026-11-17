@@ -12,8 +12,8 @@ Fecha: 17-nov-2026. Estado: prototipo en Early Access. Esta lista dice qué **no
 
 | Tema | Estado |
 |---|---|
-| Prueba de punta a punta con la app instalada (escanear, mandar `A` o `R`, ver la compuerta) | **No se hizo.** La app con Bluetooth no está instalada ni validada |
-| Rama `bluetooth-banda` de la app | Nunca se compiló ni se probó en un celular (no hay Android SDK en el PC del equipo; la compila GitHub Actions) |
+| Prueba de punta a punta con la app instalada (escanear, mandar `A` o `R`, ver la compuerta) | Hecha una vez según el equipo: video del 17-nov-2026, 3:21 a. m. (la app mandó la orden y el servo desvió el celular). Falta repetirla con conteo |
+| Rama `bluetooth-banda` de la app | La compila GitHub Actions (no hay Android SDK en el PC del equipo). La versión 0.3.0 se instaló y funcionó en un segundo celular (Xiaomi, Android 16); el vibrador nuevo y la actualización encima de una versión anterior no se han probado |
 | Conteo de pasadas y tasa de éxito | No existe. Falta la prueba de 20 pasadas por veredicto que propone el informe de diseño |
 | Velocidad de la banda | No se midió. Se describe como lenta; se puede estimar con el video del 17-nov-2026 |
 | Sentido de avance | Hacia el extremo del motor N20, deducido de fotos y video **[NO VERIFICADO]** |
@@ -21,8 +21,8 @@ Fecha: 17-nov-2026. Estado: prototipo en Early Access. Esta lista dice qué **no
 | Carga máxima | El celular de prueba pesa ≈ 300 g. El tope de ≈ 500 g es una estimación **no medida** |
 | Par del motor | La ficha del modelo equivalente da ≈ 1,5 kgf·cm; que sea el mismo ejemplar **[NO VERIFICADO]** |
 | Voltajes y corrientes | No se midieron (no hay multímetro) |
-| LED azul del ESP32 (celular conectado) | **[NO VERIFICADO]** en la prueba del 13-nov-2026 |
-| Retorno opcional D1 → D33 | Descrito en el código; no hay evidencia de prueba con la app |
+| LEDs rojo y azul del ESP32 | No hay LED montado: previsto en el firmware, no montado |
+| Retorno D1 → D33 | No montado: previsto en el código. Sin este cable el celular no ve los mensajes del Arduino |
 
 ## Bluetooth y PIN
 

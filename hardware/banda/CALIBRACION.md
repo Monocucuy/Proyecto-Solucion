@@ -1,6 +1,6 @@
 # Calibración de la compuerta
 
-Fecha: 17-nov-2026. Estado: los ángulos y la retención se cambiaron en el código el 17-nov-2026 y **no se recompiló ni se probó en la banda** **[NO VERIFICADO]**.
+Fecha: 17-nov-2026. Estado: los ángulos y la retención se cambiaron en el código el 17-nov-2026. El firmware con esos valores **no se ha cargado en la placa** y no se probó en la banda **[NO VERIFICADO]**.
 
 ## Resultado
 

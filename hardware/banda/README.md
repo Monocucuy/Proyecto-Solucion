@@ -1,6 +1,6 @@
 # Banda clasificadora de celulares (Early Access)
 
-Fecha: 17-nov-2026. Estado: **Early Access** (prototipo; se publica como pre-release `v0.2.0-early-access`).
+Fecha: 17-nov-2026. Estado: **Early Access** (prototipo; pre-releases `v0.2.0-early-access` y `v0.3.0-early-access`).
 
 ## Resultado
 
@@ -74,13 +74,13 @@ El Monitor Serie del ESP32 va a 115200 y muestra "Enviado al Arduino: A" o "R".
 
 Un iPhone no sirve: no soporta Bluetooth serie clásico.
 
-1. Con la banda encendida, el LED rojo del ESP32 (GPIO 25) parpadea mientras no hay celular.
+1. Con la banda encendida, el firmware prevé un LED rojo (GPIO 25) que parpadea mientras no hay celular. En el montaje no hay LED (previsto en el firmware, no montado).
 2. Ajustes de Android → Bluetooth → vincular `BANDA-ESP32`. El celular muestra un aviso "¿Quieres vincular el dispositivo?" y se vincula sin pedir código (el firmware tiene el PIN `1233`; ver [LIMITACIONES.md](LIMITACIONES.md)).
 3. Instalar **Serial Bluetooth Terminal** (de Kai Morich, en Play Store).
-4. Menú → Devices → pestaña Bluetooth classic → `BANDA-ESP32` → ícono de enchufe. El LED rojo se apaga y el azul (GPIO 26) queda fijo (el azul quedó **[NO VERIFICADO]** en la prueba del 13-nov).
+4. Menú → Devices → pestaña Bluetooth classic → `BANDA-ESP32` → ícono de enchufe. El firmware apagaría el LED rojo y encendería el azul (GPIO 26); en el montaje no hay LED (previsto en el firmware, no montado).
 5. Enviar `A` o `R`. El ESP32 responde "Enviado: A" o "Enviado: R".
-6. Con un celular contra la compuerta (S1 presionado), la compuerta abre a 78° (`A`) o 33° (`R`). Si la orden llega antes que el celular, queda guardada hasta que S1 se presione.
-7. Para ver los mensajes del Arduino en el celular hace falta el retorno opcional D1 → 510 Ω → D33 con 1 kΩ a GND (ver [CONEXIONES.md](CONEXIONES.md)). Sin él, el celular solo ve "Enviado: X".
+6. Con un celular contra la compuerta (S1 presionado), la compuerta abre a 78° (`A`) o 33° (`R`) según el firmware publicado; ese firmware todavía no se ha vuelto a cargar en la placa, ver [CALIBRACION.md](CALIBRACION.md). Si la orden llega antes que el celular, queda guardada hasta que S1 se presione.
+7. Para ver los mensajes del Arduino en el celular haría falta el retorno D1 → 510 Ω → D33 con 1 kΩ a GND, previsto en el firmware pero **no montado** (ver [CONEXIONES.md](CONEXIONES.md)). Hoy el celular solo ve "Enviado: X".
 
 El comentario del firmware dice que el Monitor Serie del PC a 9600 también puede mandar `A` o `R` al Arduino. Usarlo con el cable D32 → D0 conectado **[NO VERIFICADO]**.
 

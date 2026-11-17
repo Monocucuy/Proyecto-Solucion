@@ -59,7 +59,7 @@ Requiere Android 8.0 (API 26) o superior. iOS no sirve.
 2. Abrirla. Android pide permiso para instalar apps de orígenes desconocidos para ese navegador o gestor de archivos: concederlo solo para esta instalación.
 3. Instalar y abrir **Solución Scanner**.
 4. En Android 12 o superior, aceptar el permiso de Bluetooth (`BLUETOOTH_CONNECT`) cuando la app lo pida.
-5. Opcional: en **Ajustes**, pegar una clave de VirusTotal. Sin clave, la app corre hardware, sistema y heurísticas locales y omite la reputación por hash.
+5. Opcional, no recomendado (en las pruebas tardaba más de 5 minutos): en **Ajustes**, pegar una clave de VirusTotal. Sin clave, la app corre hardware, sistema y heurísticas locales y omite la reputación por hash.
 
 Si ya tiene instalada otra APK de este repositorio (por ejemplo la de la release `apk-debug`) y Android rechaza la instalación, desinstale la anterior primero: las APK de depuración compiladas en ejecuciones distintas pueden venir firmadas con claves distintas **[NO VERIFICADO en este repositorio]**.
 
