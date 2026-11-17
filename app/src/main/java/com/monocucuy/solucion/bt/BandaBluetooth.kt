@@ -39,7 +39,7 @@ class BandaBluetooth(private val ctx: Context) {
         try {
             val banda = adapter.bondedDevices.firstOrNull { it.name == NOMBRE }
                 ?: return@withContext "empareja primero $NOMBRE (PIN 1233) en Ajustes de Android"
-            adapter.cancelDiscovery()
+            // Sin cancelDiscovery(): en Android 12+ exige BLUETOOTH_SCAN y aquí nunca buscamos dispositivos.
             banda.createRfcommSocketToServiceRecord(SPP).use { socket ->
                 socket.connect()
                 socket.outputStream.write(letra.code)
@@ -50,7 +50,7 @@ class BandaBluetooth(private val ctx: Context) {
         } catch (e: IOException) {
             "no se pudo conectar con la banda (${e.message ?: "sin detalle"})"
         } catch (e: SecurityException) {
-            "Android negó el permiso de Bluetooth"
+            "Android negó el permiso de Bluetooth (${e.message ?: "sin detalle"})"
         }
     }
 
