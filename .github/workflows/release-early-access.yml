@@ -1,0 +1,73 @@
+name: Release Early Access
+
+# BORRADOR (17-nov-2026, sin publicar). Crea la pre-release "vX.Y.Z-early-access" con:
+#   - la APK de depuración (rama bluetooth-banda),
+#   - hardware/banda comprimido (firmware del Arduino y del ESP32),
+#   - el informe técnico en PDF, si existe.
+# Solo actúa sobre la etiqueta que lo dispara. Nunca ejecuta "gh release delete":
+# la release "apk-debug" (workflow android-apk.yml) y las demás quedan intactas.
+
+on:
+  push:
+    tags: ['v*-early-access']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Etiqueta de la release (debe terminar en -early-access)'
+        required: true
+        default: 'v0.2.0-early-access'
+
+permissions:
+  contents: write   # para crear la release y subir los archivos
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      # En push de etiqueta es la etiqueta; a mano, la que se escribe en el formulario.
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      # Evita que una ejecución a mano toque una etiqueta que no es de Early Access.
+      - name: Validar la etiqueta
+        run: |
+          case "$TAG" in
+            v*-early-access) echo "Etiqueta: $TAG" ;;
+            *) echo "La etiqueta '$TAG' no sigue el patrón v*-early-access."; exit 1 ;;
+          esac
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Pruebas y APK en una sola llamada: si fallan las pruebas, no se publica nada.
+      - name: Pruebas unitarias y APK debug
+        run: chmod +x gradlew && ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Reunir los archivos de la release
+        run: |
+          mkdir release-assets
+          cp app/build/outputs/apk/debug/app-debug.apk release-assets/solucion-scanner-early-access-debug.apk
+          zip -r release-assets/firmware-banda-early-access.zip hardware/banda
+          # El PDF es opcional: se busca en docs/banda y, si no está, en hardware/banda/docs.
+          for pdf in docs/banda/Informe_Tecnico_Final_Banda_Clasificadora.pdf hardware/banda/docs/Informe_Tecnico_Final_Banda_Clasificadora.pdf; do
+            if [ -f "$pdf" ]; then cp "$pdf" release-assets/; break; fi
+          done
+          ls -l release-assets
+
+      # Si la release ya existe (por ejemplo, una segunda ejecución), solo se reemplazan los archivos.
+      - name: Crear la pre-release o subir los archivos
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "La release $TAG ya existe: se suben los archivos con --clobber."
+            gh release upload "$TAG" release-assets/* --clobber
+          else
+            gh release create "$TAG" release-assets/* \
+              --prerelease \
+              --target "$GITHUB_SHA" \
+              --title "Early Access $TAG" \
+              --notes-file hardware/banda/RELEASE_NOTES_early_access.md
+          fi
